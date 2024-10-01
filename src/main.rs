@@ -13,11 +13,11 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let http_request: Vec<_> = BufReader::new(&mut stream)
+    let _http_request: Vec<_> = BufReader::new(&mut stream)
         .lines()
         .map(|result| result.unwrap())
         .take_while(|line| !line.is_empty())
         .collect();
 
-    println!("Request: {http_request:#?}\n");
+    stream.write_all("HTTP/1.1 200 OK\r\n\r\n".as_bytes()).unwrap();
 }
