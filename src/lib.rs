@@ -29,9 +29,9 @@ impl ThreadPool {
 
 struct Worker{
     thread: thread::JoinHandle<()>,
-};
+}
 impl Worker {
     fn new() -> Worker {
-        Worker(thread::spawn(|| {}))
+        Worker { thread: thread::spawn(|| {}) }
     }
 }
