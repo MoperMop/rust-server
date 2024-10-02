@@ -21,6 +21,10 @@ fn handle_connection(mut stream: TcpStream) {
         "GET" => {
             let (code, file) = match uri.as_str() {
                 "/" => ("200 OK", "index.html"),
+                "/sleep" => {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    ("200 OK", "index.html")
+                }
                 _ => ("404 NOT FOUND", "404.html"),
             };
 
@@ -28,8 +32,8 @@ fn handle_connection(mut stream: TcpStream) {
             let content = fs::read(file).unwrap();
             stream.write_all(&[
                 format!("\
-HTTP/1.1 {}\r\n\
-Content-Length: {}\r\n\r\n", code, content.len()).as_bytes(),
+HTTP/1.1 {code}\r\n\
+Content-Length: {}\r\n\r\n", content.len()).as_bytes(),
                 &content,
             ].concat()).unwrap();
         }
