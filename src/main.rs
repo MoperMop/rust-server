@@ -14,17 +14,38 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let _http_request: Vec<_> = BufReader::new(&mut stream)
-        .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+    let mut reader = BufReader::new(&mut stream);
 
-    let content = fs::read("index.html").unwrap();
-    stream.write_all(&[
-        format!("\
-HTTP/1.1 200 OK\r\n\
-Content-Length: {}\r\n\r\n", content.len()).as_bytes(),
-        &content,
-    ].concat()).unwrap();
+    let [method, uri] = request_info(&mut reader);
+    match method.as_str() {
+        "GET" => {
+            let (code, file) = match uri.as_str() {
+                "/" => ("200 OK", "index.html"),
+                _ => ("404 NOT FOUND", "404.html"),
+            };
+
+
+            let content = fs::read(file).unwrap();
+            stream.write_all(&[
+                format!("\
+HTTP/1.1 {}\r\n\
+Content-Length: {}\r\n\r\n", code, content.len()).as_bytes(),
+                &content,
+            ].concat()).unwrap();
+        }
+        _ => return (),
+    }
+}
+
+const SPACE: u8 = " ".as_bytes()[0];
+/// Get the method and uri from the given HTTP request.
+fn request_info(reader: &mut BufReader<&mut TcpStream>) -> [String; 2] {
+    let mut info = [Vec::new(), Vec::new()].into_iter().map(|mut word| {
+        reader.read_until(SPACE, &mut word).unwrap();
+        word.pop();
+
+        String::from_utf8(word).unwrap()
+    });
+
+    [info.next().unwrap(), info.next().unwrap()]
 }
