@@ -1,19 +1,19 @@
-use std::{thread, net::TcpStream, sync::{mpsc, Arc, Mutex}};
+use std::{thread, sync::{mpsc, Arc, Mutex}};
 
 
-/// A pool of threads for handling tasks.
-pub struct ThreadPool {
+/// A pool of threads for handling a task.
+pub struct ThreadPool<T: Send + 'static> {
     _threads: Vec<thread::JoinHandle<()>>,
-    sender: mpsc::Sender<TcpStream>,
+    sender: mpsc::Sender<T>,
 }
-impl ThreadPool {
+impl<T: Send + 'static> ThreadPool<T> {
     /// Create a new ThreadPool which will handle the given callback.
     ///
     /// Size is the number of threads in the pool.
     pub fn new(
-        f: impl FnMut(TcpStream) + Send + 'static + Clone,
+        f: impl FnMut(T) + Send + 'static + Clone,
         size: usize,
-    ) -> ThreadPool {
+    ) -> ThreadPool<T> {
         let mut threads = Vec::with_capacity(size);
 
 
@@ -23,7 +23,7 @@ impl ThreadPool {
 
         for _ in 0..size {
             let reciever = Arc::clone(&reciever);
-            let mut f = (f).clone();
+            let mut f = f.clone();
             threads.push(thread::spawn(move || {
                 loop {
                     let stream = reciever.lock().unwrap().recv().unwrap();
@@ -36,8 +36,8 @@ impl ThreadPool {
         ThreadPool { _threads: threads, sender }
     }
 
-    /// Add the given callback to the queue.
-    pub fn execute(&self, stream: TcpStream) {
-        self.sender.send(stream).unwrap();
+    /// Send the given data to the threads.
+    pub fn send(&self, data: T) {
+        self.sender.send(data).unwrap();
     }
 }
