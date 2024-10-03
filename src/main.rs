@@ -1,17 +1,37 @@
 use std::{
     fs,
+    process,
     io::{prelude::*, BufReader},
     net::{TcpListener, TcpStream},
+    sync::{Arc, Mutex},
 };
-use rust_server::ThreadPool;
+mod thread_pool;
+use thread_pool::ThreadPool;
 
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-    let pool = ThreadPool::new(handle_connection, 4);
+    let pool = Arc::new(Mutex::new(Some(ThreadPool::new(handle_connection, 4))));
+
+
+    {
+        let pool = Arc::clone(&pool);
+        if let Err(_) = ctrlc::set_handler(move || {
+            drop(pool.lock().unwrap().take());
+
+
+            println!("");
+            process::exit(0);
+        }) {
+            eprintln!("\
+Warning: unable to set up graceful shutdown.
+Continuing anyway.");
+        }
+    }
+
 
     for stream in listener.incoming() {
-        pool.send(stream.unwrap());
+        pool.lock().unwrap().as_ref().unwrap().send(stream.unwrap());
     }
 }
 
